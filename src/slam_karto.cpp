@@ -93,6 +93,7 @@ class SlamKarto
     double resolution_;
     boost::mutex map_mutex_;
     boost::mutex map_to_odom_mutex_;
+    double laser_range_threshold;
 
     // Karto bookkeeping
     karto::Mapper* mapper_;
@@ -138,6 +139,9 @@ SlamKarto::SlamKarto() :
     if(!private_nh_.getParam("delta", resolution_))
       resolution_ = 0.05;
   }
+  if(!private_nh_.getParam("range_threshold", laser_range_threshold))
+     laser_range_threshold = 12.0;
+
   double transform_publish_period;
   private_nh_.param("transform_publish_period", transform_publish_period, 0.05);
 
@@ -345,7 +349,7 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     {
       tf_.transformPose(base_frame_, ident, laser_pose);
     }
-    catch(tf::TransformException e)
+    catch(const tf::TransformException & e)
     {
       ROS_WARN("Failed to compute laser pose, aborting initialization (%s)",
 	       e.what());
@@ -397,7 +401,7 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     laser->SetMaximumAngle(scan->angle_max);
     laser->SetAngularResolution(scan->angle_increment);
     // TODO: expose this, and many other parameters
-    //laser_->SetRangeThreshold(12.0);
+    laser->SetRangeThreshold(laser_range_threshold);
 
     // Store this laser device for later
     lasers_[scan->header.frame_id] = laser;
@@ -420,7 +424,7 @@ SlamKarto::getOdomPose(karto::Pose2& karto_pose, const ros::Time& t)
   {
     tf_.transformPose(odom_frame_, ident, odom_pose);
   }
-  catch(tf::TransformException e)
+  catch(const tf::TransformException & e)
   {
     ROS_WARN("Failed to compute odom pose, skipping scan (%s)", e.what());
     return false;
@@ -682,7 +686,7 @@ SlamKarto::addScan(karto::LaserRangeFinder* laser,
                                                                     tf::Vector3(corrected_pose.GetX(), corrected_pose.GetY(), 0.0)).inverse(),
                                                                     scan->header.stamp, base_frame_),odom_to_map);
     }
-    catch(tf::TransformException e)
+    catch(const tf::TransformException & e)
     {
       ROS_ERROR("Transform from base_link to odom failed\n");
       odom_to_map.setIdentity();

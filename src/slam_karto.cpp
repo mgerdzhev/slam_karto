@@ -401,6 +401,7 @@ SlamKarto::getLaser(const sensor_msgs::LaserScan::ConstPtr& scan)
     laser->SetMaximumAngle(scan->angle_max);
     laser->SetAngularResolution(scan->angle_increment);
     // TODO: expose this, and many other parameters
+    ROS_INFO("range threshold %f, min: %f, max: %f", laser_range_threshold,scan->range_min, scan->range_max);
     laser->SetRangeThreshold(laser_range_threshold);
 
     // Store this laser device for later
@@ -653,14 +654,20 @@ SlamKarto::addScan(karto::LaserRangeFinder* laser,
       it != scan->ranges.rend();
       ++it)
     {
-      readings.push_back(*it);
+    	if (std::isinf(*it) || *it > scan->range_max)
+    		readings.push_back(laser_range_threshold + 1);
+    	else
+    		readings.push_back(*it);
     }
   } else {
     for(std::vector<float>::const_iterator it = scan->ranges.begin();
       it != scan->ranges.end();
       ++it)
     {
-      readings.push_back(*it);
+    	if (std::isinf(*it) || *it > scan->range_max)
+    		readings.push_back(laser_range_threshold + 1);
+    	else
+    		readings.push_back(*it);
     }
   }
   
